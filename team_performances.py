@@ -1,28 +1,21 @@
 import pandas as pd
+import json
+import datetime
 
-def get_team_scores(team_performances):
-    team_scores_by_event = {school_name: {event: 0 for event in heps_events} for school_name in team_performances }
-    team_scores = {school_name: 0 for school_name in team_performances}
+def get_team_scores(teams, events, top_marks, scoring_rubric={0:10,1:8,2:6,3:4,4:2,5:1} ):
+    
+    team_scores = {school_name: {event: 0 for event in events} for school_name in teams}
+    for team in team_scores:
+        team_scores[team]['*Total*'] = 0
 
-    scoring_rubric = {
-        0:10,
-        1:8,
-        2:6,
-        3:4,
-        4:2,
-        5:1
-    }
+    for event_name in events:
+        for i, (mark, athlete_name, school_name) in top_marks[event_name].iterrows():
+            if i < len(scoring_rubric):
+                points = scoring_rubric[i]
+                team_scores[school_name][event_name] += points
+                team_scores[school_name]['*Total*'] += points
 
-    for team_name in team_performances:
-        events = team_performances[team_name]
-        for event_name in events:
-            for i, mark, athlete in events[event_name]:
-                if i < 6:
-                    points = scoring_rubric[i]
-                    team_scores_by_event[team_name][event_name] += points
-                    team_scores[team_name] += points
-
-    team_scores, team_scores_by_event
+    return pd.DataFrame(team_scores)
     
 def get_top_marks(team_performances, limit=10):
     top_marks = {}
@@ -40,6 +33,7 @@ def get_top_marks(team_performances, limit=10):
                     top_marks[event_name].append(performance_info)
 
     for event_name in top_marks:
+        
         is_field_event = type(top_marks[event_name][0][0]) == float
 
         if is_field_event:
@@ -59,11 +53,15 @@ def open_performances(file_name):
         for athlete in tp[team]:
             for event in tp[team][athlete]:
                 mark = tp[team][athlete][event]
-                if not(type(mark) == float) and 'days' in mark:
+                if not(type(mark) == float) and ':' in mark:
                     try:
                         days, time = mark.split(' days ')
                         hours, minutes, seconds = time.split(':')
                         tp[team][athlete][event] = datetime.timedelta(hours=int(hours), minutes=int(minutes), seconds=float(seconds))
                     except ValueError:
-                        print event,'-',mark
+                        try:
+                            hours, minutes, seconds = mark.split(':')
+                            tp[team][athlete][event] = datetime.timedelta(hours=int(hours), minutes=int(minutes), seconds=float(seconds))
+                        except ValueError:
+                            print 'Could not process information on '+athlete+' from '+team+'.'
     return tp

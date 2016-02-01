@@ -77,6 +77,22 @@ def get_team_performances(team_ids):
     return team_performances
 
 
+def get_meet_events(meet_url):
+    # Get team page
+    meet_page = BeautifulSoup(requests.get(meet_url).text)
+
+    # Get Event
+    events = meet_page.select('div.container')[1].table.find_all('table')[0].find_all('a')[1:]
+    meet_events = [e.text.replace('Dash','') \
+                       .replace('\n','') \
+                       .replace(' ','') \
+                       .replace('Yard','yd') \
+                       .replace('Run','') \
+                       .replace('Hurdles','H') \
+                       .replace('000',',000') \
+                   for e in events]
+    return meet_events
+
 #======================== Helpers ==============================
 
 def get_timedelta(time):
@@ -101,15 +117,15 @@ def fix_nt(mark):
     else:
         return mark
     
-def save_performancs(team_performances, file_name='team_performances.json'):
+def save_performances(team_performances, file_name='team_performances.json'):
     tp = team_performances
 
     for team in tp:
         for athlete in tp[team]:
             for event in tp[team][athlete]:
                 mark = tp[team][athlete][event]
-                if not type(mark) == float:
+                if type(mark) == datetime.timedelta or type(mark) == pd.tslib.Timedelta:
                     tp[team][athlete][event] = str(mark)
 
-    with open(filen_name,'w') as f:
+    with open(file_name,'w') as f:
         json.dump(tp, f)        
